@@ -1,0 +1,54 @@
+{
+  "sections": {
+    "hooks": {
+      "enforce": {
+        "UserPromptSubmit": [
+          {
+            "hooks": [
+              {
+                "type": "command",
+                "command": "python3 \"{{CLAUDE_DIR}}/enforce/bin/session-start-hook.py\"",
+                "timeout": 5
+              }
+            ]
+          }
+        ]
+      },
+      "monitor": {
+        "Notification": [
+          {
+            "hooks": [
+              {
+                "type": "command",
+                "command": "python3 \"{{CLAUDE_DIR}}/monitor/bin/monitor-hook.py\"",
+                "timeout": 5
+              }
+            ]
+          }
+        ],
+        "Stop": [
+          {
+            "hooks": [
+              {
+                "type": "command",
+                "command": "python3 \"{{CLAUDE_DIR}}/monitor/bin/monitor-hook.py\"",
+                "timeout": 5
+              }
+            ]
+          }
+        ],
+        "StopFailure": [
+          {
+            "hooks": [
+              {
+                "type": "command",
+                "command": "python3 \"{{CLAUDE_DIR}}/monitor/bin/monitor-hook.py\"",
+                "timeout": 5
+              }
+            ]
+          }
+        ]
+      }
+    }
+  }
+}

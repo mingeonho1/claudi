@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  unit:
+    name: unit (${{ matrix.os }}, py${{ matrix.python }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python: ['3.9', '3.13']
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Run unit tests
+        run: python3 -m unittest discover -s tests -v
+
+  install-smoke:
+    name: install-smoke (macos-latest, with claudlet)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Ensure pipx on PATH
+        run: |
+          brew install pipx || true
+          pipx ensurepath || true
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Install (copies claude/**, installs claudlet, patches pet.py)
+        run: CLAUDI_NO_LAUNCHCTL=1 ./install.sh --yes --home "$RUNNER_TEMP/h" --no-launchd
+      - name: Verify claudlet patch applied
+        run: python3 "$RUNNER_TEMP/h/.claude/enforce/bin/patch-claudlet.py" --check
+      - name: Uninstall (reverts patch, removes hooks)
+        run: CLAUDI_NO_LAUNCHCTL=1 ./uninstall.sh --yes --home "$RUNNER_TEMP/h"
