@@ -1,0 +1,31 @@
+# Python caches
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# macOS
+.DS_Store
+
+# claudi backups (install-time backups, never committed)
+*.bak-*
+*.bak-claudi-*
+
+# Local runtime data (e.g. when CLAUDE_CONFIG_DIR points inside the repo for testing)
+.claudi-test/
+.claudi-manifest.json
+
+# Runtime data that must never live in the repo
+claude/**/events.jsonl
+claude/**/notices.json
+claude/**/notices.json.lock
+claude/**/slack-items.json
+claude/**/slack-items.json.lock
+claude/**/attention.json
+claude/**/cursor
+claude/**/heartbeat
+claude/**/monitor-session
+claude/**/logs/
+claude/**/state/
+claude/enforce/standalone-pet
+claude/enforce/session_reminder_sessions/
