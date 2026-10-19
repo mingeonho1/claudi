@@ -1,0 +1,18 @@
+claudi
+Copyright (c) 2026 mingeonho1 and claudi contributors
+Licensed under the MIT License (see LICENSE).
+
+This project builds on third-party software:
+
+claudlet — https://github.com/YeeDochi/Claudlet (PyPI: claudlet)
+  Author: YeeDochi
+  License: CC0-1.0 (public domain dedication)
+  claudi does NOT redistribute claudlet. The installer installs the published
+  package (claudlet==2.6.0) from PyPI with pipx, and
+  claude/enforce/bin/patch-claudlet.py applies small, reversible text patches
+  to the installed pet.py on the user's own machine. "클로디" (Claudi) is the
+  nickname of claudlet's built-in default creature.
+
+claudi is an independent community project. It is not affiliated with,
+endorsed by, or sponsored by Anthropic. "Claude" and "Claude Code" are
+trademarks of Anthropic, PBC.
