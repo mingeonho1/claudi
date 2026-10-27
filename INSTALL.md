@@ -83,10 +83,15 @@ Mark the test alert handled with `python3 ~/.claude/monitor/bin/notify.py --hand
 
 ## 6. Wrap-up (for the user)
 
-- The hooks and output language apply from the next Claude Code session on (only partly in the current one).
-- To use monitoring, open a session and run `/session-monitor`.
-- For the Slack digest routine, see `routines/README.md` (needs the desktop app's scheduled tasks + the Slack connector).
-- To revert: `./uninstall.sh`
+Many users only hand Claude this repo's link and never read the docs, so **always end the install by telling the user the following**, in their language. Don't skip it even if everything succeeded.
+
+1. **The pet alone does nothing yet.** The Alerts tab stays empty until a monitor session is running: open one dedicated session (Claude Code CLI or the desktop app's Code tab) and run `/session-monitor`. That session is excluded from its own notifications.
+2. **Re-run after restarts.** The monitor registration lives in that one session. After restarting that session or the app, run `/session-monitor` again.
+3. **Reopen existing sessions.** Hooks and the output language apply only to Claude Code sessions opened after install (only partly in the current one). Sessions opened before install send no events to the monitor.
+4. **Recommended monitor settings:** `/model opus` + effort `high` before starting `/session-monitor` (the skill's frontmatter applies only to its first turn).
+5. **If the Alerts tab is empty:** check that `~/.claude/monitor/monitor-session` exists and `~/.claude/monitor/heartbeat` was modified within the last few minutes; if not, run `/session-monitor`.
+6. Optional: the Slack digest routine — see `routines/README.md` (needs the desktop app's scheduled tasks + the Slack connector).
+7. To revert: `./uninstall.sh`
 
 ## If something goes wrong
 
