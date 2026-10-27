@@ -10,7 +10,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-24.04, macos-latest]  # pin: ubuntu-latest (26.04) has no Python 3.9 build
         python: ['3.9', '3.13']
     runs-on: ${{ matrix.os }}
     steps:
