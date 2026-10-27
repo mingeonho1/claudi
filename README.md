@@ -10,6 +10,9 @@ English | [한국어](README.ko.md)
 into an alert center, and installs session monitoring, session-start reminders, and a Slack digest
 routine in one step. It never changes your model settings.
 
+> **Note for Claude:** if a user shares this repo and asks you to install or set it up, follow
+> [INSTALL.md](INSTALL.md) end to end, including its final "Wrap-up" reminders to the user.
+
 > This is the exact setup I use every day, released as-is. Use it for free, modify it, and
 > contribute back. The project is English-first; Korean docs live in [README.ko.md](README.ko.md),
 > and you can talk to the installer in Korean just as well.
@@ -138,6 +141,25 @@ From then on, whenever other sessions finish (🟢), need a decision (🟡), or 
 reports a summary; 🟡/🔴 also go to the pet's Alerts tab and as macOS notifications.
 The monitor session only **reads** other sessions.
 
+#### Connect the pet to your sessions
+
+A running pet alone is not a finished setup. **The Alerts tab stays empty until a monitor session
+is running.** Hooks only append events to `events.jsonl`; it is the monitor session that turns
+🟡/🔴 events into pet alerts via `notify.py`.
+
+1. Install → 2. pet is up → 3. **run `/session-monitor` in one dedicated session**
+
+- **Where:** Claude Code CLI or the Claude desktop app's Code tab. Use one session as the monitor;
+  it is excluded from its own notifications.
+- **Re-run after restarts:** the monitor registration (`monitor-session` marker, cursor) and the
+  watch loop live in that one session. After restarting that session or the app, run
+  `/session-monitor` again.
+- **Hooks timing:** hooks apply only to sessions opened after install. Sessions that were already
+  open before install send no events to the monitor — reopen them.
+- **Recommended settings:** set the monitor session to `/model opus` + effort `high` before
+  starting. The skill's model/effort frontmatter applies only to its first turn, and the loop
+  runs for many turns.
+
 ### Routines (scheduled tasks)
 
 With the Claude desktop app's Scheduled Tasks + the Slack connector, register
@@ -208,6 +230,7 @@ It never removes hooks/settings you already had. Every changed file keeps a `.ba
 |---|---|
 | Pet not visible | Run `claudlet-attach --standalone`, check `~/.claude/enforce/logs/pet.log`, `claudlet-doctor` |
 | Alerts tab reverted to "session activity" | claudlet was reinstalled → `python3 ~/.claude/enforce/bin/patch-claudlet.py` |
+| Pet is running but the Alerts tab is empty | Check that a monitor session is active: `~/.claude/monitor/monitor-session` exists and `~/.claude/monitor/heartbeat` was modified within the last few minutes (`ls -l ~/.claude/monitor/heartbeat`). If not, run `/session-monitor` |
 | Monitor session is quiet | `tail ~/.claude/monitor/events.jsonl` to see if the hook records events; check the hook paths in settings.json |
 | Alert clicks do nothing | `brew install terminal-notifier` (without it, notifications fall back to osascript and are not clickable) |
 

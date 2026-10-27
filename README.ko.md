@@ -9,6 +9,8 @@
 — 바탕화면 펫 [claudlet](https://github.com/YeeDochi/Claudlet) 의 기본 크리처 **클로디**를
 알림 센터로 바꾸고, 세션 관제·세션 시작 리마인더·Slack 요약 루틴을 한 번에 설치합니다. 모델 설정은 건드리지 않습니다.
 
+> **Claude 에게:** 사용자가 이 레포 링크를 주고 설치·설정을 부탁하면 [INSTALL.md](INSTALL.md) 절차를 끝까지 따르고, 마지막 "Wrap-up" 리마인드까지 사용자에게 전달하세요.
+
 > 제가 실제로 매일 쓰고 있는 구성 그대로를 공개한 것입니다. 무료로 쓰시고, 고쳐서 쓰시고, 기여해 주세요.
 > 프로젝트는 영어 우선이고, 영어 문서는 [README.md](README.md) 에 있습니다. 설치는 한국어로 말해도 똑같이 됩니다.
 
@@ -133,6 +135,17 @@ claudlet-attach --standalone
 이후 다른 세션들이 끝나거나(🟢), 판단이 필요하거나(🟡), 실패하면(🔴) 이 세션이 요약 보고하고, 🟡/🔴 는 펫 알림 탭과 macOS 알림으로도 보냅니다.
 관제 세션은 다른 세션을 **읽기만** 합니다.
 
+#### 펫과 세션 연결하기
+
+펫이 떠 있다고 설정이 끝난 게 아닙니다. **관제 세션이 돌고 있어야 Alerts 탭에 알림이 들어옵니다.** 훅은 `events.jsonl` 에 이벤트를 기록만 하고, 🟡/🔴 이벤트를 `notify.py` 로 펫 알림으로 보내는 건 관제 세션입니다.
+
+1. 설치 → 2. 펫 실행 확인 → 3. **전용 세션 하나에서 `/session-monitor` 실행**
+
+- **어디서:** Claude Code CLI 또는 Claude 데스크톱 앱의 Code 탭. 세션 하나를 관제용으로 두며, 관제 세션 자신은 알림 대상에서 빠집니다.
+- **재시작하면 다시 실행:** 관제 등록(`monitor-session` 마커, cursor)과 감시 루프는 그 세션 안에서만 돕니다. 그 세션이나 앱을 재시작했다면 `/session-monitor` 를 다시 실행하세요.
+- **훅 적용 시점:** 훅은 설치 이후에 연 세션부터 적용됩니다. 설치 전에 열려 있던 세션은 관제 세션으로 이벤트를 보내지 않으니 새로 여세요.
+- **권장 설정:** 시작 전에 관제 세션을 `/model opus` + effort `high` 로 맞추세요. 스킬의 model/effort frontmatter 는 첫 턴에만 적용되고, 감시 루프는 여러 턴 동안 돕니다.
+
 ### 루틴 (예약 작업)
 
 Claude 데스크톱 앱의 Scheduled Tasks + Slack 커넥터가 있으면 [`routines/slack-digest`](routines/README.md) 를 등록해 펫 알림 탭 하단에 "지금 봐야 할 Slack" 을 띄울 수 있습니다.
@@ -200,6 +213,7 @@ claudlet 을 업데이트하면 패치가 지워지므로 `patch-claudlet.py` �
 |---|---|
 | 펫이 안 보임 | `claudlet-attach --standalone` 실행, `~/.claude/enforce/logs/pet.log` 확인, `claudlet-doctor` |
 | 알림 탭이 '세션 활동'으로 돌아감 | claudlet 이 재설치됨 → `python3 ~/.claude/enforce/bin/patch-claudlet.py` |
+| 펫은 떠 있는데 Alerts 탭이 비어 있음 | 관제 세션이 살아 있는지 확인: `~/.claude/monitor/monitor-session` 이 있고 `~/.claude/monitor/heartbeat` 수정 시각이 몇 분 이내인지(`ls -l ~/.claude/monitor/heartbeat`). 아니면 `/session-monitor` 실행 |
 | 관제 세션이 조용함 | `tail ~/.claude/monitor/events.jsonl` 로 훅이 이벤트를 남기는지, settings.json 훅 경로 확인 |
 | 알림 클릭이 안 됨 | `brew install terminal-notifier` (없으면 osascript 알림으로 대체되어 클릭 이동 불가) |
 
