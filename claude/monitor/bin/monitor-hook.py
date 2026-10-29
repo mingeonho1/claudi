@@ -5,11 +5,13 @@
 #   - Reads the hook JSON from stdin and appends one line to ~/.claude/monitor/events.jsonl (file lock).
 #   - Needs-decision/input waits and failures update attention.json (the session a pet click opens).
 # Notifications are sent directly by the monitor session/pet via notify.py; the hook only records
-# (HOOK_NOTIFY=False).
+# (HOOK_NOTIFY=False). Exception: if the monitor loop's heartbeat is stale, the hook sends a
+# raw one-line fallback notice itself.
 # Claude Code 훅(Stop, StopFailure, Notification)용 수집기.
 #   - stdin 의 훅 JSON 을 읽어 ~/.claude/monitor/events.jsonl 에 한 줄 append(파일 락).
 #   - 판단/입력 대기·실패는 attention.json 을 갱신(펫 클릭이 열 세션).
 # 알림은 관제 세션/펫이 notify.py 로 직접 보낸다. 훅은 기록만(HOOK_NOTIFY=False).
+# 예외: 관제 루프 heartbeat 가 오래됐으면 훅이 원문 한 줄 대체 알림을 직접 보낸다.
 #
 # Must: be fast (<300ms), always exit 0, never inject anything into the session via hook stdout.
 # 반드시: 빠르게(<300ms), 항상 exit 0, 훅 stdout 으로 세션에 아무것도 주입하지 않음.
@@ -73,6 +75,14 @@ ATTENTION_FILE = os.path.join(MONITOR, "attention.json")   # session a pet click
 # 훅에서의 즉시 알림 on/off. False 면 훅은 기록(append_event)·attention 갱신만 하고
 # 알림(notify.py)·디바운스 상태파일은 건드리지 않는다. 되돌리려면 True.
 HOOK_NOTIFY = False
+
+# Safety net when the monitor loop is dead: if the heartbeat (refreshed every 30s by
+# wait-event) is older than this, the hook itself updates the Alerts-tab row and sends a
+# notification (raw one-liner, zero tokens).
+# 관제 세션 루프가 죽었을 때의 안전망: heartbeat(wait-event 가 30초마다 갱신)가 이 시간
+# 넘게 안 갱신됐으면 훅이 직접 알림 탭 행 + 알림을 보낸다(원문 한 줄, 토큰 0).
+HEARTBEAT_FILE = os.path.join(MONITOR, "heartbeat")
+HEARTBEAT_STALE_SEC = 120.0
 
 # Scheduled-task session detection + desktop deeplink mapping (shared with enforce).
 # Works even if the import fails. enforce/bin is the parent's sibling (claude/enforce/bin).
@@ -216,6 +226,34 @@ def fire_notify(title, body, session_id, open_url="", focus_sid=""):
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
             stdin=subprocess.DEVNULL, start_new_session=True,
         )
+    except Exception:
+        pass
+
+
+def monitor_alive():
+    """Is the monitor loop (wait-event) alive? False if the heartbeat is missing or stale.
+    관제 루프(wait-event)가 살아 있나. heartbeat 가 없거나 오래됐으면 False."""
+    try:
+        return (time.time() - os.path.getmtime(HEARTBEAT_FILE)) < HEARTBEAT_STALE_SEC
+    except OSError:
+        return False
+
+
+def fire_fallback_notice(event, ntype, title, body, session_id, open_url, focus_sid):
+    """With the monitor off, update the Alerts-tab row (notices.json) and notify directly.
+    관제가 꺼져 있을 때 알림 탭 행(notices.json)을 직접 갱신하고 알림을 보낸다."""
+    try:
+        import subprocess
+        icon = "🛑" if event == "StopFailure" else ("🟡" if ntype in ACT_TYPES else "✅")
+        argv = [sys.executable, NOTIFY, "--title", title, "--icon", icon,
+                "--body", t("(monitor off · raw) ", "(관제 꺼짐·원문) ") + body,
+                "--session", session_id or ""]
+        if open_url:
+            argv += ["--open-url", open_url]
+        elif focus_sid:
+            argv += ["--focus", focus_sid]
+        subprocess.Popen(argv, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                         stdin=subprocess.DEVNULL, start_new_session=True)
     except Exception:
         pass
 
@@ -367,6 +405,13 @@ def main():
     # same branch so .notify-state.json is untouched while off. Set HOOK_NOTIFY=True to revert.
     # 훅에서의 즉시 알림은 끈다(HOOK_NOTIFY). 디바운스 상태파일 쓰기도 같은 조건 안에 둬서
     # 알림이 꺼진 동안 .notify-state.json 을 건드리지 않는다. 되돌리려면 HOOK_NOTIFY=True.
+    # Exception: with the monitor loop dead (stale heartbeat), fall back to a direct notice.
+    # 예외: 관제 루프가 죽었으면(heartbeat 오래됨) 훅이 직접 알림을 보낸다.
+    if not HOOK_NOTIFY and not monitor_alive():
+        key = "fallback|%s|%s|%s" % (session_id, event, ntype)
+        if not debounced(key):
+            fire_fallback_notice(event, ntype, title, body, session_id, open_url, session_id)
+        return
     if HOOK_NOTIFY:
         key = "%s|%s|%s" % (session_id, event, ntype)
         if debounced(key):

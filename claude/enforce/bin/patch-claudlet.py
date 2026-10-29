@@ -25,8 +25,12 @@
 #   patch F [enforce-alerts-slack]  : a divider + 'Slack' subheading + up to 10 at the
 #       bottom of the Alerts tab. Renders slack-items.json by importance. key=="slack"
 #       rows are excluded from the general list. Item click -> open-link.sh when url exists.
+#   patch G [enforce-portrefresh-patch]: a 1-hour timer in _init_socket rewrites the .port
+#       file. macOS dirhelper deletes $TMPDIR files untouched for 3+ days, so a long-running
+#       pet loses its .port and the liveness check (check.py)/motions/hooks can't find it.
 # 패치 요약: A 펫 클릭→주의 세션 열기, B 마지막 응답 릴레이 차단, C notice 표시 전용,
-#   D 세션활동 탭 비움, E 세션활동 탭 자리를 '알림' 탭으로(notices.json), F 알림 탭 Slack 영역.
+#   D 세션활동 탭 비움, E 세션활동 탭 자리를 '알림' 탭으로(notices.json), F 알림 탭 Slack 영역,
+#   G .port 파일 1시간 주기 재기록(macOS $TMPDIR 3일 정리 대응).
 #
 # Injected code never hardcodes paths — at runtime it computes the enforce/monitor
 # directories from CLAUDE_CONFIG_DIR (default ~/.claude).
@@ -418,12 +422,35 @@ ALERTS_SLACK_BLOCK = '''\
 
 '''
 
+# -- patch G [enforce-portrefresh-patch]: rewrite the .port file periodically ---------
+# .port is written once at startup and closed, so a pet left running 3+ days gets it
+# deleted by macOS temp cleanup (lock/slot survive because the pet holds them open). Then
+# even the launchd restart is blocked by the lock. Rewrite hourly to refresh atime and
+# restore it if already gone.
+# .port 는 기동 때 한 번 쓰고 닫혀, 펫을 3일 넘게 켜 두면 macOS 임시폴더 정리가 지운다
+# (lock/slot 은 펫이 열어 두고 있어 살아남는다). 그러면 launchd 재기동도 lock 에 막혀
+# 못 고친다. 1시간마다 다시 써서 atime 을 갱신하고, 이미 지워졌으면 복구한다.
+PORTREFRESH_MARK = "[enforce-portrefresh-patch]"
+PORTREFRESH_ANCHOR = (
+    "        hostinfo.write_session_port(self.session_id, self.srv.getsockname()[1])\n")
+PORTREFRESH_BLOCK = (
+    "        # " + PORTREFRESH_MARK + " rewrite .port hourly (macOS $TMPDIR 3-day cleanup).\n"
+    "        def _refresh_port():\n"
+    "            try:\n"
+    "                hostinfo.write_session_port(self.session_id, self.srv.getsockname()[1])\n"
+    "            except OSError:\n"
+    "                pass\n"
+    "        self._port_refresh = QTimer(self)\n"
+    "        self._port_refresh.timeout.connect(_refresh_port)\n"
+    "        self._port_refresh.start(60 * 60 * 1000)\n"
+)
+
 # (mark, description) in application order — used by --check and the summary output.
 # 적용 순서대로의 마커 목록 — --check 와 요약 출력에 쓴다.
 ALL_MARKS = [
     CLICK_MARK, NOREPLY_MARK, NOTICE_MARK, NOACTIVITY_MARK,
     ALERTS_TAB_MARK, ALERTS_WIRE_MARK, ALERTS_REFRESH_MARK,
-    ALERTS_POLL_MARK, ALERTS_METHODS_MARK, ALERTS_SLACK_MARK,
+    ALERTS_POLL_MARK, ALERTS_METHODS_MARK, ALERTS_SLACK_MARK, PORTREFRESH_MARK,
 ]
 
 
@@ -516,7 +543,10 @@ def _apply_all(content):
     # patch F: 알림 탭 'Slack' 영역 메서드 — patch E 메서드 블록 바로 뒤에 삽입.
     content, c10 = _insert_before(content, ALERTS_SLACK_ANCHOR,
                                   ALERTS_SLACK_BLOCK, ALERTS_SLACK_MARK)
-    flags = (c1, c2, c3, c4, c5, c6, c7, c8, c9, c10)
+    # patch G: rewrite .port hourly. / patch G: .port 파일 1시간 주기 재기록.
+    content, c11 = _insert_after(content, PORTREFRESH_ANCHOR, PORTREFRESH_BLOCK,
+                                 PORTREFRESH_MARK)
+    flags = (c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11)
     return content, flags
 
 
@@ -598,7 +628,7 @@ def main():
 
     if not changed:
         print("already patched (click + noreply + notice + noactivity + alerts "
-              "+ slack) — nothing to do.")
+              "+ slack + portrefresh) — nothing to do.")
         return 0
 
     # Backup (once). / 백업(최초 1회).
@@ -626,10 +656,10 @@ def main():
         print("ERROR: patched file failed to compile, reverted:", e, file=sys.stderr)
         return 3
 
-    c1, c2, c3, c4, c5, c6, c7, c8, c9, c10 = flags
+    c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11 = flags
     print("patched: click=%s noreply=%s notice=%s noactivity=%s "
-          "alerts(tab=%s wire=%s refresh=%s poll=%s methods=%s slack=%s)"
-          % (c1, c2, c3, c4, c5, c6, c7, c8, c9, c10))
+          "alerts(tab=%s wire=%s refresh=%s poll=%s methods=%s slack=%s) portrefresh=%s"
+          % (c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11))
     return 0
 
 

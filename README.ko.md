@@ -137,7 +137,7 @@ claudlet-attach --standalone
 
 #### 펫과 세션 연결하기
 
-펫이 떠 있다고 설정이 끝난 게 아닙니다. **관제 세션이 돌고 있어야 Alerts 탭에 알림이 들어옵니다.** 훅은 `events.jsonl` 에 이벤트를 기록만 하고, 🟡/🔴 이벤트를 `notify.py` 로 펫 알림으로 보내는 건 관제 세션입니다.
+펫이 떠 있다고 설정이 끝난 게 아닙니다. **관제 세션이 돌고 있어야 Alerts 탭에 알림이 들어옵니다.** 훅은 `events.jsonl` 에 이벤트를 기록만 하고, 🟡/🔴 이벤트를 `notify.py` 로 펫 알림으로 보내는 건 관제 세션입니다. (안전망: 관제 루프가 2분 넘게 응답이 없으면 훅이 직접 "(관제 꺼짐·원문)" 한 줄 알림을 탭에 넣습니다 — 요약은 없지만 놓치지는 않게.)
 
 1. 설치 → 2. 펫 실행 확인 → 3. **전용 세션 하나에서 `/session-monitor` 실행**
 
@@ -192,6 +192,7 @@ ln -s ~/.claude/monitor/bin/swiftbar-sessions.10s.py "<SwiftBar 플러그인 폴
 | D | 원래의 '세션 활동' 타임라인 비활성화 |
 | E | 그 탭을 `notices.json` 기반 **Alerts** 탭으로 교체 |
 | F | Alerts 탭 하단에 Slack 중요건 영역 추가 |
+| G | 펫 `.port` 파일을 1시간마다 다시 써서 macOS `$TMPDIR` 정리로 오래 떠 있는 펫을 못 찾게 되는 문제 방지 |
 
 모든 패치는 마커로 표시되고 멱등이며, `python3 ~/.claude/enforce/bin/patch-claudlet.py --revert` 로 원본으로 되돌릴 수 있습니다.
 claudlet 을 업데이트하면 패치가 지워지므로 `patch-claudlet.py` 를 다시 실행하세요(지원 버전: 2.6.0).

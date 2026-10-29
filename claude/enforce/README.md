@@ -30,7 +30,7 @@ outbox/askhistory/additionalContext (this breaks feedback loops).
 | `claudlet_click.py` | (injected into the pet) pet click → jump to the session that needs attention |
 | `focus_session.py` | Jump to a session: app = deep link, CLI = terminal focus (best-effort) |
 | `sessionlabel.py` | One-line session label (app = title / CLI = terminal·cwd·branch) |
-| `patch-claudlet.py` | Minimal claudlet `pet.py` patch (re)applier (A–F, idempotent) |
+| `patch-claudlet.py` | Minimal claudlet `pet.py` patch (re)applier (A–G, idempotent) |
 | `check.py` | enforce health check (Slack summary not running / standalone pet down) |
 | `session-start-hook.py` | UserPromptSubmit (once, on a session's first prompt) reminder. Skips scheduled sessions |
 | `launchd-check.py` | launchd backup checker (reminds even when the app is closed) |
@@ -117,6 +117,11 @@ enforce/monitor directories from `CLAUDE_CONFIG_DIR` (or `~/.claude` if unset).
 - `[enforce-alerts-slack]` (patch F) — at the bottom of the Alerts tab: a divider +
   a "Slack" subheading + up to 10 items (`slack-items.json`, by importance).
   Clicking an item → `open-link.sh` if it has a `url`.
+- `[enforce-portrefresh-patch]` (patch G) — adds a 1-hour `QTimer` to
+  `pet._init_socket` that rewrites the `.port` file. macOS `dirhelper` deletes files in
+  `$TMPDIR` untouched for 3+ days; a long-running pet then lost its `.port`, so the pet
+  was alive but `check.py` raised `pet_down`, and the launchd restart was blocked by the
+  lock and couldn't fix it.
 
 > Applying the patch only changes **`pet.py` on disk**. **A pet process that is
 > already running holds the old code in memory, so you must stop the standalone pet
