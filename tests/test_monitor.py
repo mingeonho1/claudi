@@ -5,6 +5,7 @@ import json
 import os
 import shutil
 import sys
+import time
 import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -34,6 +35,10 @@ class MonitorHookTest(unittest.TestCase):
         # transcript 가 실재해야 Stop/StopFailure 가 기록된다.
         self.transcript = os.path.join(self.cfg, "t.jsonl")
         write(self.transcript, '{"type":"assistant","message":{"content":[{"type":"text","text":"done"}]}}\n')
+        # Fresh heartbeat = monitor alive, so the hook only records (no fallback notice).
+        # heartbeat 가 최신이면 관제 살아있음 → 훅은 기록만(대체 알림 없음).
+        self.heartbeat = monitor_path(self.cfg, "heartbeat")
+        write(self.heartbeat, "")
 
     def tearDown(self):
         shutil.rmtree(self.cfg, ignore_errors=True)
@@ -41,6 +46,33 @@ class MonitorHookTest(unittest.TestCase):
     def _run(self, payload):
         return run_script(script(MON_BIN, "monitor-hook.py"), env=self.env,
                           input_text=json.dumps(payload))
+
+    def test_monitor_alive_no_fallback_notice(self):
+        self._run({"session_id": "sid-alive", "hook_event_name": "StopFailure",
+                   "transcript_path": self.transcript, "cwd": "/tmp/repo"})
+        time.sleep(1)
+        self.assertFalse(os.path.exists(monitor_path(self.cfg, "notices.json")))
+
+    def test_monitor_dead_fallback_notice(self):
+        # Stale heartbeat → the hook writes the Alerts-tab row itself (async notify.py).
+        # heartbeat 가 오래됨 → 훅이 알림 탭 행을 직접 쓴다(비동기 notify.py).
+        old = time.time() - 600
+        os.utime(self.heartbeat, (old, old))
+        self._run({"session_id": "sid-dead", "hook_event_name": "StopFailure",
+                   "transcript_path": self.transcript, "cwd": "/tmp/repo"})
+        notices = monitor_path(self.cfg, "notices.json")
+        data = {}
+        for _ in range(50):
+            try:
+                with open(notices, encoding="utf-8") as f:
+                    data = json.load(f)
+                if "sid-dead" in data:
+                    break
+            except (OSError, ValueError):
+                pass
+            time.sleep(0.1)
+        self.assertIn("sid-dead", data)
+        self.assertFalse(data["sid-dead"]["handled"])
 
     def test_stop_appends_event_no_attention(self):
         self._run({"session_id": "sid-stop", "hook_event_name": "Stop",

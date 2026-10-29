@@ -4,6 +4,10 @@ This project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- Pet patch G `[enforce-portrefresh-patch]`: rewrite the pet's `.port` file hourly so macOS `$TMPDIR` cleanup (3+ days untouched) no longer leaves a running pet unreachable (`pet_down` false alarms, blocked launchd restart)
+- `monitor-hook.py` fallback: when the monitor loop's heartbeat is older than 2 minutes, the hook writes a raw one-line Alerts-tab row + notification itself (debounced), so events aren't lost while `/session-monitor` is down
+
 ### Changed
 - Docs: explain that `/session-monitor` must be running for the pet's Alerts tab to receive alerts (where to run it, re-run after restarts, hooks timing, recommended settings, troubleshooting); INSTALL.md wrap-up now tells Claude to always remind the user of these points (#2)
 

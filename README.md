@@ -23,7 +23,7 @@ routine in one step. It never changes your model settings.
 
 | Component | What it does |
 |---|---|
-| **claudi pet + "Alerts" tab** | Installs claudlet 2.6.0 and applies small patches (A–F) to `pet.py` so the pet's chat window becomes an **alert center**. Sessions that need a decision (🟡), failed sessions (🔴), and important Slack items stack up one line each; click a row to jump straight to that session. |
+| **claudi pet + "Alerts" tab** | Installs claudlet 2.6.0 and applies small patches (A–G) to `pet.py` so the pet's chat window becomes an **alert center**. Sessions that need a decision (🟡), failed sessions (🔴), and important Slack items stack up one line each; click a row to jump straight to that session. |
 | **Always-on standalone pet** | launchd keeps one pet alive from login onward (re-checks hourly). It is not tied to session hooks, so the pet stays quiet even with many sessions. |
 | **Session monitoring (`/session-monitor`)** | When another session finishes or stalls on a permission/input prompt, a hook records the event and the monitor session summarizes that session's transcript as "progress vs. goal / direction / trade-offs / what I need to decide / next action". |
 | **Session-start reminder** | Once per session, on the first prompt, it reminds you of easy-to-forget operational state (Slack digest paused, pet off). |
@@ -145,7 +145,9 @@ The monitor session only **reads** other sessions.
 
 A running pet alone is not a finished setup. **The Alerts tab stays empty until a monitor session
 is running.** Hooks only append events to `events.jsonl`; it is the monitor session that turns
-🟡/🔴 events into pet alerts via `notify.py`.
+🟡/🔴 events into pet alerts via `notify.py`. (Safety net: if the monitor loop has been silent for
+over 2 minutes, the hook itself drops a raw one-line "(monitor off · raw)" alert into the tab — no
+summary, just enough that nothing is missed.)
 
 1. Install → 2. pet is up → 3. **run `/session-monitor` in one dedicated session**
 
@@ -208,6 +210,7 @@ Pet patch details: [`claude/enforce/README.md`](claude/enforce/README.md) · mon
 | D | Disable the original "session activity" timeline |
 | E | Replace that tab with a `notices.json`-based **Alerts** tab |
 | F | Add a Slack-highlights area at the bottom of the Alerts tab |
+| G | Rewrite the pet's `.port` file hourly so macOS `$TMPDIR` cleanup can't orphan a long-running pet |
 
 Every patch is marked, idempotent, and reversible with
 `python3 ~/.claude/enforce/bin/patch-claudlet.py --revert`.

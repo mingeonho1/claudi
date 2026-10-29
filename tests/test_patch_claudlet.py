@@ -24,7 +24,7 @@ PATCH = os.path.join(ENF_BIN, "patch-claudlet.py")
 MARKS = ["enforce-click-patch", "enforce-noreply-patch", "enforce-notice-patch",
          "enforce-noactivity-patch", "enforce-alerts-tab", "enforce-alerts-wire",
          "enforce-alerts-refresh", "enforce-alerts-poll", "enforce-alerts-methods",
-         "enforce-alerts-slack"]
+         "enforce-alerts-slack", "enforce-portrefresh-patch"]
 
 
 def _obtain_pristine(tmpdir):
